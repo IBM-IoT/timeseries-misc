@@ -1,0 +1,1 @@
+javac -cp .:./ifxjdbc.jar BulkInsert.java 

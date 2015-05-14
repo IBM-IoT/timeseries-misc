@@ -1,0 +1,146 @@
+/**************************************************************************
+ *
+ * Licensed Materials - Property of IBM Corporation
+ *
+ * Restricted Materials of IBM Corporation
+ *
+ * IBM Informix JDBC Driver
+ * (c) Copyright IBM Corporation 1998, 2013  All rights reserved.
+ *
+ ****************************************************************************/
+/***************************************************************************
+ *
+ *  Title:         BulkInsert.java
+ *
+ *  Description: This program demonstrates the use of IFX_USEPUT with single
+ *               insert statement in batch execution mode.
+ *
+ *  Instructions to run the program
+ *
+ *  1. Use CreateDB to create the Database testdb if not already done.
+ *           java CreateDB 'jdbc:informix-sqli:
+ *           //myhost:1533:user=<username>;password=<password>'
+ *  2. Run the program by:
+ *          java BulkInsert
+ *          'jdbc:informix-sqli://myhost:1533:
+ *          user=<username>;password=<password>'
+ *  3. Expected Result 
+ * URL = "jdbc:informix-sqli://myhost:1533/testDB:user=<username>;password=<password>"
+ * Trying to insert data using PreparedStatement ...
+ * Number of records inserted (should be 1000):
+ *  records inserted = 1000
+
+ *
+ ***************************************************************************
+ */
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Properties;
+import java.util.StringTokenizer;
+
+public class BulkInsert {
+    
+    public static void main(String[] args) {
+        if (args.length == 0) {
+            System.out.println("FAILED: connection URL must be provided in order to run the demo!");
+            return;
+        }
+        
+        String url = args[0];
+        Connection conn = null;
+        Statement stmt = null;
+        StringTokenizer st = new StringTokenizer(url, ":");
+        String token;
+        String newUrl = "";
+        
+        for (int i = 0; i < 4; ++i) {
+            if (!st.hasMoreTokens()) {
+                System.out.println("FAILED: incorrect URL format!");
+                return;
+            }
+            token = st.nextToken();
+            if (newUrl != "")
+                newUrl += ":";
+            newUrl += token;
+        }
+        
+        newUrl += "/testDB";
+        
+        while (st.hasMoreTokens()) {
+            newUrl += ":" + st.nextToken();
+        }
+        
+        String cmd = null;
+        
+        String testName = "Bulk-insertion using SQ_PUT";
+        
+        System.out.println(">>>" + testName + " test.");
+        System.out.println("URL = \"" + newUrl + "\"");
+        
+        try {
+            Class.forName("com.informix.jdbc.IfxDriver");
+        } catch (Exception e) {
+            System.out.println("FAILED: failed to load Informix JDBC driver.");
+        }
+        
+        try {
+            Properties pr = new Properties();
+            pr.put("IFX_USEPUT", "1");
+            conn = DriverManager.getConnection(newUrl, pr);
+        } catch (SQLException e) {
+            System.out.println("FAILED: failed to connect!");
+        }
+        try {
+            stmt = conn.createStatement();
+            stmt.executeUpdate("drop table tab1");
+        } catch (SQLException e) {
+        }
+        try {
+            stmt = conn.createStatement();
+            stmt.executeUpdate("create table tab1(i integer)");
+        } catch (SQLException e) {
+            System.out.println("Failed to create table ..." + e.getMessage());
+        }
+        
+        System.out.println("Trying to insert data using PreparedStatement ...");
+        try {
+            PreparedStatement pst = conn.prepareStatement("insert into tab1 values (?)");
+            for (int i = 0; i < 1000; i++) {
+                pst.setInt(1, i);
+                pst.addBatch();
+            }
+            pst.executeBatch();
+        } catch (SQLException e) {
+            System.out.println("FAILED to Insert into tab: " + e.toString());
+        }
+        
+        try {
+            ResultSet r = stmt.executeQuery("select count(*) from tab1");
+            int j;
+            
+            System.out.println("Number of records inserted (should be 1000):");
+            while (r.next()) {
+                int count = r.getInt(1);
+                
+                // verify result
+                if (count != 1000)
+                    System.out.println("FAILED: records inserted = " + count + ". should be = 1000");
+                else
+                    System.out.println(" records inserted = " + count);
+            }
+            r.close();
+            stmt.close();
+        } catch (SQLException e) {
+            System.out.println("FAILED: Fetch statement failed: " + e.toString());
+            e.printStackTrace();
+            
+        }
+        
+    }
+    
+}

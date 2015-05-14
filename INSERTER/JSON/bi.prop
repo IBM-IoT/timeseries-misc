@@ -1,0 +1,4 @@
+url=jdbc:informix-sqli://198.23.95.124:25100/epg:INFORMIXSERVER=informix;user=informix;password=in4mix;
+
+batch.size=7200
+
