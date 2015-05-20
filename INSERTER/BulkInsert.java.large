@@ -113,7 +113,8 @@ try {
 
         //System.out.println("Trying to insert data using PreparedStatement ...");
         try {
-            PreparedStatement pst = conn.prepareStatement("insert into pmu_vti values (?,?, ?,?,?,?)");
+            //PreparedStatement pst = conn.prepareStatement("insert into pmu_large_vti values (?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?)");
+            PreparedStatement pst = conn.prepareStatement("insert into pmu_large_vti values (?,?, ?,?,?,?)");
 
        batchCount=0;
        for (int min=0; min <= 59; min++) {
@@ -124,11 +125,20 @@ try {
                //System.out.println("TS: " + tstamp);
 
 
+
+
                pst.setInt(1, pmu_id);
                pst.setString(2, tstamp);
+/*  Setting up to insert into relational table
+                  pst.setInt(3, 3);
+                  pst.setInt(4, 3);
+                  pst.setDouble(5, 3.4);
+                  pst.setDouble(6, 3.4);
 
-               for( int x=3; x<= 6; x++) {
-                  pst.setDouble(x, 3.4);
+*/
+
+               for( int x=3; x<= 17; x++) {
+                  pst.setDouble(5, 3.4);
                }
                pst.addBatch();
                batchCount++;

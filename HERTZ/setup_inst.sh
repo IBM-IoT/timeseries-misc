@@ -39,7 +39,7 @@ echo "Adding llog"
 echo "=============================="
 
 dbaccess sysadmin - <<!
-execute function admin("add log", "llog", "20M",9,0 );
+execute function admin("add log", "llog", "50M",9,0 );
 !
 
 

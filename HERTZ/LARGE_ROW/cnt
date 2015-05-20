@@ -1,0 +1,4 @@
+dbaccess epg - <<!
+set isolation dirty read;
+select count(*) from pmu_large_vti
+!

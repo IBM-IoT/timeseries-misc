@@ -30,44 +30,30 @@ insert into calendartable (c_name, c_calendar)
 create row type pmu_row_t
 (
    tstamp datetime year to fraction(5),
-   col1 smallfloat,
-   col2 smallfloat,
-   col3 integer 
+   col1 integer,
+   col2 float  
 );
 
-create table smoker (
-  col1 char(20)
-);
+
 create row type pmu_large_row_t
 (
    tstamp datetime year to fraction(5),
-   col1 smallfloat,
-   col2 smallfloat,  
-   col3 smallfloat,  
-   col4 smallfloat,  
-   col5 smallfloat,  
-   col6 smallfloat,  
-   col7 smallfloat,  
-   col8 smallfloat,  
-   col9 smallfloat,  
-   col10 smallfloat,  
-   col11 smallfloat,  
-   col12 smallfloat,  
-   col13 smallfloat,  
-   col14 smallfloat,  
-   col15 smallfloat 
+   col1 float,
+   col2 float,  
+   col3 float,  
+   col4 float,  
+   col5 float,  
+   col6 float,  
+   col7 float,  
+   col8 float,  
+   col9 float,  
+   col10 float,  
+   col11 float,  
+   col12 float,  
+   col13 float,  
+   col14 float,  
+   col15 float 
 );
-
-create table pmu_rel(
-   pmu_id integer,
-   tstamp datetime year to fraction(5),
-   col1 smallfloat,  
-   col2 smallfloat,  
-   col3 smallfloat,
-   col4 smallfloat 
-
-);
-
 
 create row type pmu_json_row_t
 (
@@ -77,8 +63,7 @@ create row type pmu_json_row_t
 
 create table pmu
 (
-   pmu_id char(50) not null primary key,
-   desc   char(100),
+   pmu_id integer not null primary key,
    data timeseries(pmu_row_t)
 
 );
@@ -140,14 +125,12 @@ let CONTNUM=1;
 for ((i=1; i<= $NUMPMU; i++));
 do
 
-echo "Insert pmu_id:$i into CONT:$CONTNUM"
+echo "Insert pmu_id:$NUMPMU into CONT:$CONTNUM"
 dbaccess epg - <<!
    -- 60 hertz
    begin work;
-   insert into pmu values('$i','Desc $i', tscreateirr('ts_1sec', '$dt',
+   insert into pmu values($i, tscreateirr('ts_1sec', '$dt',
                           0,60,0,'cont$CONTNUM')); 
-   --insert into pmu values('$i', tscreateirr('ts_1sec', '$dt',
-   --                       0,60,0,'cont$CONTNUM')); 
    insert into pmu_large values($i, tscreateirr('ts_1sec', '$dt',
                           0,60,0,'contlarge$CONTNUM')); 
    insert into pmu_json values($i, tscreateirr('ts_1sec', '$dt',

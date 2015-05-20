@@ -1,0 +1,297 @@
+  
+DESCRIPTION
+  The TSLoader client programs facilitate fast insertion of TimeSeries data.
+
+  TSL_Init is used to initialise the internal TimeSeries loader structures
+  in the Informix server. It requires a database name, the table name and
+  the TimeSeries column name. It executes the SQL function TSL_Init(). This
+  must be called before any loading takes place. It is recommended that the
+  TimeSeries base table is seeded first with data before running TSL_Init.
+  It must have been run before attempting to use TSL_Load. 
+
+  TSL_Load is the data loader client. It also requires the database, table
+  and column name. It expects data in the standard '|' delimited format for
+  unloaded data. The field ordering must be:
+
+    primarykey|timestamp|field1|field2|field3|...
+
+  If it is a composite primary key then each part of the key must be '|'
+  delimited. The complete requirements for the input data format is specified
+  in the TimeSeries manual.
+
+  The TSL_Load program reads the input stream and creates
+  buffers of lines suitable for using with the SQL function TSL_Put().
+  After one or more buffers have been sent to the server they are
+  usually flushed to disk using the SQL function TSL_Commit(). See the
+  TRANSACTIONS section for more information.
+
+  The TSL_Shutdown program is used to free up the server resources. After
+  running this program it will be necessary to re-run TSL_Init.
+
+  The three programs are actually a single executable, just linked to a
+  different name.
+
+OPTIONS
+  --usage                Print a list of available options.
+  --man                  Print this man page.
+  --version              Print some version information.
+  --verbose              Print more informative messages.
+  --database dbname      Database to connect to. Can be in dbname@server format.
+  --table tabname        TimeSeries base table.
+  --user username        Connect as this user name.
+  --password passwd      Connect with this password.
+  --column ts_column     Column in table defined as type TimeSeries.
+  --logfile file         This is for the server to log messages to. A full
+  	    		 path name is required
+  --datetime dt_format   This is the format of the time stamp field in the
+                         data it follows the same convention as the Informix
+			 DBFORMAT environment variable. The default
+			 is '%Y-%m-%d %H:%M:%S'.
+  --input { file | '-' }  The input data can be in a file or read from
+                         standard input.
+  --input-dir dirname    The input data is picked up from a directory structure
+                         with this as the root.
+  --readers              Number of directory reader threads.
+  --one-shot             Normally the input directory is continually scanned
+  			 for input files. With this option the loader will
+			 terminate when no more files are available.
+  --tx-size nrows        The commit interval can be set based on the number of
+                         incoming rows. The default is 10000.
+  --status nseconds      The current loading progress is printed every few
+                         seconds. 
+  --tsl-rejects file     This file name is passed to the server for
+                         internally rejected rows to be sent to.
+  --put-count nbuffers   The number of TSL_Put() calls made before the data
+                         gets flushed to disk. The default is 1. Caution should
+			 be exercised when increasing this value as it could
+			 cause excesive memory usage in the server and increase
+			 the posibility of generating a long transaction. It is
+			 also counter productive to have a lot of data to flush
+			 in one go as it ties up the server and prevents other
+			 processing.
+  --put-buffer bufsize   The size of the buffer used by TSL_Put(). The maximum
+  	       		 size is that of an LVARCHAR.
+  --putbuf-dir dirname   Use TSL_Put (<handle>, 'FILE:/...') and use a file to
+  	       		 store the data instead of sending a buffer over SQLI.
+  --lock-containers      There is some optimisation in the server to reduce the
+  			 calls to the internal lock manager when the whole
+			 container is locked. However it has implication for
+			 the way transactions work, see the TRANSACTIONS section
+			 for more details.
+  --no-info              Don't use the TSL_FlushInfo() SQL function to gather
+  			 statistics from the flush to disk call. It saves a
+			 small amount of network traffic.
+  --rejects file         This file is used to log the incoming lines of data
+  	    		 that are rejected by the client loader.
+  --threads N            Specify the number of threads to use for loading. See
+  	    		 the section on PERFORMANCE for more details.
+  --flush-flag N         Use this flag as the basis for the flag used when data
+  	       		 is flushed. This can be used to control the way
+			 duplicate data is handled. The default is 5.
+  --flush-interval N     If the input data stream goes idle or there are no
+                         files to process then data may be sitting in put
+			 buffers. Check every N seconds for this and do a
+			 forced flush of the data so it is sent to disk.
+  --reduced-log          Incorporate the reduced logging flag (256) when
+  			 the data is flushed.
+  --to-utc column_number  TimeSeries stores time stamps either in UTC or in
+  	   		 localtime but has no provision for daylight savings.
+			 Use this flag in order to convert from localtime
+			 with daylight savings to UTC. It is important that
+			 the time stamps for the period of the daylight
+			 change over are in time stamp order.
+  --pass-through { 0 | 1 | 2 }  For testing purposes it is possible to run the loader
+			 in pre-processing mode without sending the data to the
+			 server.
+			 0  Read data and process it. Database calls are NOPs.
+			 1  Data is pre-processed and sent to stdout.
+			 2  Data is pre-processed and sent to stderr.
+  --fix-non-ascii        If there are any control charcters in the input they
+  			 are transformed into '?' to make them acceptable for
+			 insertion into the database. Otherwise the input row
+			 will be rejected. Rejected rows will be recorded in
+			 the client rejects file (--rejects) if specified. 
+  --skip-repeat-columns [ ncols ]  Turn on the feature that replaces repeating
+  			 values with NULL to reduce the storage requirements.
+			 Optionally specify the number of leading fields in the
+			 data that should be preserved.
+  --repeat-marker N      When using repeat replacement, how often a full row,
+  		  	 without NULLs, is written. Default 100.
+  --remove-allnulls      For very aggresive space saving it is possible to
+  			 entirely remove redundant data when all the values
+			 in the element are NULL. This is only suitable for
+			 irregular TimeSeries data.
+TRANSACTIONS
+  The default mode when running TSL_Load is to use the TSL_Commit() SQL function
+  to flush the data to disk. The transaction size can be controlled by using
+  the --tx-size option. Be careful when increasing the size of this parameter,
+  the larger the value the more likelyhood of hitting a long transaction. It
+  also will have an adverse effect on memory usage if the --reduced-log option
+  is used as well.
+
+  If the --lock-containers option is used then it is not possible to use
+  TSL_Commit() because the commit of the first internal transaction will
+  release the lock. WHen this option is used the TSL_FlushAll() function
+  is used within a single transaction. This makes the transaction size
+  dependent on the size of the put buffer and number of buffers sent before
+  the flush. Similar care shold be taken here not to make the transaction too
+  large.
+
+  It is suggested that the maximum transaction size should be less than 100,000
+  rows and that no more than 25 puts are performed before a flush.
+  
+PERFORMANCE
+  The main goal of the TSLoader client is to get the best insert performance 
+  for TimeSeries data by using the TSL API built into the server. AS well as
+  using this efficient API it also has some optimisations available that
+  will further boost performance.
+
+Multithreading  The number of threads used to insert data can be configured
+  to make the best use of the hardware available, although this will be
+  dependent on the way the TimeSeries data has been physically laid out.
+
+  To reduce the possibility of contention among threads, each loader
+  thread is dedicated to a set of containers. This ensures that no loader
+  thread will work on the same container as any other. To do this, TSL_Load
+  must read in the TimeSeries base table on start up to establish a mapping of
+  primary key to container name. This mapping is fixed for the time that the
+  loader is running. This means that any new TimeSeries inserted after the
+  loader has started will not be in the map and incoming data for that
+  TimeSeries will be discarded.
+
+  In order for this to be advantageous it is necessary to spread the
+  TimeSeries data evenly, among multiple containers. Once this is done the
+  optimum number of threads wil be based on the number of available CPUs.
+
+  When using the --input-dir option it is possible to specify the number
+  of threads that will be processing the files with the --readers option.
+
+  In cluster and multi-server modes the number of threads for each node is
+  derived from the number of CPUs on the node. If --threads is specified in
+  this context it will override this on a per-node basis.
+
+Batch Processing  The most efficient method for inserting TimeSeries data is using batches
+  of data that is sorted by primary key and then time stamp. This greatly
+  reduces the internal overhead generated when different TimeSeries have to
+  be opened and closed for only a single insert candidate.
+
+  In batch mode
+  it is also useful to consider the reduced logging flag where multiple
+  elements for the same page will almost halve the number of loggical log
+  records required.
+
+Storage Optimisation  NULL values in TimeSeries fields take up no space so it can be a useful
+  storage optimisation to turn default, or often repeated, values into NULLs.
+  This can be accomplished in the loader using the --skip-repeat-columns
+  option.
+
+  With this option turned on, any time a value is repeated for
+  a TimeSeries it will be replaced with a NULL to save space. So this
+  sequence of rows
+  
+    key1|2015-02-12 17:22:00|1|2|3|A|
+    key1|2015-02-12 17:23:00|2|2|3|B|
+    key1|2015-02-12 17:24:00|2|2|3||
+    key1|2015-02-12 17:25:00|3|2|4|C|
+
+  Will be sent to the server as:
+  
+    key1|2015-02-12 17:22:00|1|2|3|A|
+    key1|2015-02-12 17:23:00|2|||B|
+    key1|2015-02-12 17:24:00|||||
+    key1|2015-02-12 17:25:00|3||4|C|
+
+  The NULLs in the transformed data will take up no space on disk. This can be
+  a significant saving if there is a lot of repeated data. There are however
+  some limitations with this approach.
+
+  o  When querying the data it is necessary to replace the NULLs with the
+  correct value. This will need to be done manually in the query client or
+  in the server by using the ProjectedClip() function with the column(nn)
+  specifier to look back though the data set for the last non-NULL value.
+  Because of the possible processing overhead when going back a long way, a
+  marker row with all the correct values is inserted at an interval
+  determined by the --repeat-marker option.
+
+  o  It is important to ensure that data is always recieved in time stamp order.
+  Any out of order data will get a NULL replacement based on the preceeding
+  input row; which may not be appropriate.
+
+  o  There is no provision for handling a true NULL within the input data.
+  It will be subject to repeat replacement when queried.
+
+  It may not be appropriate to apply the repeat replacement scheme to all
+  fields in the data. In this case the first N fields can be protected by
+  specifying N to the --skip-repeat-columns option. For example with N=2
+  the above example data would look like this.
+
+    key1|2015-02-12 17:22:00|1|2|3|A|
+    key1|2015-02-12 17:23:00|2|2|3|B|
+    key1|2015-02-12 17:24:00|2|2|||
+    key1|2015-02-12 17:25:00|3|2|4|C|
+  
+  For more aggresive optimisation it is possible to discard rows where NULL
+  replacement would generate a row with all values being NULL. This can be
+  turned on with the --remove-allnulls option. It will work in conjunction
+  with the skipping of initial fields where equality of value to the previous
+  row is used rather than the value being NULL. It is an option best suited
+  to irregular data where values are propogated forwards by default.
+
+Data Directory  When using the --input-dir option there must be the following
+  sub-directories available: Input, Process, Complete. A file ending
+  in .tsl placed in the Input sub-directory will be processed by the loader.
+  While being processed it is moved to the Process sub-directory and then
+  moved to the Complete directory when processing is finished. If the load
+  is interrupted the part processed files remain in the Process directory.
+
+EXAMPLES
+  TSL_Init --database stores_demo --table ts_data --column raw_reads --datetime '%Y-%m-%d %H:%M:%S.%F3' --logfile ${PWD}/loader.log
+
+  This initialises the server for fast loading of TimeSeries data. The input
+  time stamp is of type DATETIME YEAR TO FRACTION(3) and the log for server
+  messages is specified.
+  
+  cat input.unl | TSL_Load --database stores_demo --table ts_data --column raw_reads --input - --status 10 --put-count 5 --rejects ${PWD}/bad_input.log --tsl-rejects ${PWD}/reject.log --threads 4
+
+  Here, the loader reads from stdin, prints a status message (elememt count
+  and rate) every 10 seconds. After every 5 calls to TSL_Put() a flush is
+  performed. Any input lines with bad data is logged by the client to
+  the bad_input.log file, any rows rejected by the server are logged in
+  the reject.log file. Four loader threads will be used to insert the data.
+  
+  TSL_Shutdown --database stores_demo --table ts_data --column raw_reads
+
+  The fast loader API in the server is shutdown.
+
+ENVIRONMENT
+  The standard Informix environment variables for making a database
+  connection need to be set. INFORMIXDIR, INFORMIXSQLHOSTS, INFORMIXSERVER
+  and also LD_LIBRARY_PATH needs to include the client library directories.
+
+  If FET_BUF_SIZE is not in the environment then it is set to twice the
+  size of the put buffer.
+  
+TO DO
+  Monitor incoming time stamps when removing repeating fields and produce
+  a warning for any out of order data that will invalidate the NULL
+  replacement strategy.
+
+  Specify a column list for the fields that are subject to NULL replacement.
+
+  Enable multi-node inserts to a clustered GRID.
+
+  Fix the use of --threads to be more consistent.
+
+  The mapping of containers to loader threads should take account of
+  the physical dbspace to reduce contention.
+
+SEE ALSO
+  The Informix TimeSeries manual and the Informix Performance
+  Tuning Guide.
+  
+BUGS
+  Probably more than you can imagine.
+
+AUTHOR
+  Cosmo@uk.ibm.com
+

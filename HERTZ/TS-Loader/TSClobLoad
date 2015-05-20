@@ -1,0 +1,46 @@
+#!/bin/bash
+######################################################################
+#
+#  Licensed Materials - Property of IBM
+#
+#  Restricted Materials of IBM
+#
+#  IBM Informix Dynamic Server
+#  (c) Copyright IBM Corporation 2013 All rights reserverd.
+#
+#
+#   Title            : TSClobLoad
+#   Description      : Shell script to load a file via CLOB interface
+#
+######################################################################
+
+db=$1
+table=$2
+column=$3
+log=$4
+file=$5
+
+line=$(head -1 "${file}")
+
+case "${line}" in
+    "#%"*)
+        echo "Cannot load a file with command directives:"
+        echo "    <$line>"
+        exit 1
+        ;;
+esac
+
+dbaccess ${db} - <<%_EOF_%  2>/dev/null | grep flush
+
+execute function tsl_attach ('$table','$column', '$log');
+
+execute function tsl_put ('$table|$column', filetoclob ('$file','server'));
+
+begin;
+select 'flush='||hex(tsl_flush ('$table|$column')) from table (set{1});
+commit;
+
+execute function tsl_sessionclose ('$table|$column');
+
+%_EOF_%
+
