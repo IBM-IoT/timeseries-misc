@@ -47,7 +47,6 @@ dbaccess simpletsjson - <<!
            'container1', 'rootdbs','sensors_row_t', 1024, 1024 );
 !
 
-done
 
 echo "======================================="
 echo "Creating Virtual table"
