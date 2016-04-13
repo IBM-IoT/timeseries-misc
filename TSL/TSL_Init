@@ -1,0 +1,31 @@
+
+export INFORMIXDIR=/home/informix/1210FC5
+export ONCONFIG=onconfig
+export PATH=$INFORMIXDIR/bin:$PATH:.
+export INFORMIXSQLHOSTS=$INFORMIXDIR/etc/sqlhosts
+export INFORMIXSERVER=informix
+
+export JAVA_HOME=/home/informix/java/jdk1.7.0_60
+export PATH=$JAVA_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$INFORMIXDIR/lib:$INFORMIXDIR/lib/esql
+
+
+[ $# -lt 3 ] && {
+
+   echo "Usage:"
+   echo "     $0 database table column "
+   echo ""
+   exit
+}
+
+db=$1
+table=$2
+column=$3
+
+
+
+dbaccess $db <<!
+execute function tsl_init('$table', '$column');
+!
+
+exit 0
