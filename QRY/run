@@ -1,0 +1,5 @@
+dbaccess rtdms2015 - <<!
+execute procedure getcurrentseconddata();
+--execute procedure getcurrentseconddata("signalvalue_id in ('CALIFORNIA1.CALIFORNIA1_IM')");
+--execute procedure getcurrentseconddata_1("signalvalue_id in ('CALIFORNIA1.CALIFORNIA1_IM')");
+!

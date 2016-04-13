@@ -1,0 +1,25 @@
+
+QUERY: (OPTIMIZATION TIMESTAMP: 05-26-2015 17:42:23)
+------
+select * from signalvalue_vti
+
+Estimated Cost: 1000000
+Estimated # of Rows Returned: 8
+Maximum Threads: 8
+
+  1) informix.signalvalue_vti: VTI SCAN  (Parallel, fragments: ALL)
+
+
+Query statistics:
+-----------------
+
+  Table map :
+  ----------------------------
+  Internal name     Table name
+  ----------------------------
+  t1                signalvalue_vti
+
+  type     table  rows_prod  est_rows  rows_scan  time       est_cost
+  -------------------------------------------------------------------
+  scan     t1     217340     8         217340     00:00.61   1000000 
+
